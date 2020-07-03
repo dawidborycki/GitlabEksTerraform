@@ -1,0 +1,51 @@
+# Terraform Docker image and entry point
+image:
+  name: hashicorp/terraform:latest
+  entrypoint:
+    - '/usr/bin/env'
+
+# Variables hold cache key, path and terraform plan file name
+variables:
+  TF_CACHE_KEY: terraform
+  TF_CACHE_PATH: .terraform
+  TF_PLAN_FILE: eks-plan
+
+# Cache key and location  
+cache:
+  key: $TF_CACHE_KEY
+  paths:
+    - $TF_CACHE_PATH
+      
+# Three stages: validate, plan, and apply
+stages:
+  - validate
+  - plan
+  - apply  
+
+# Terraform will be initialized before each job
+before_script:
+  - terraform init
+
+# Jobs: validate, plan, and apply (one for each stage)
+# Validate and plan are triggered automatically
+# Apply job uses manual trigger
+terraform-validate:
+  stage: validate
+  script:
+    - terraform validate
+  allow_failure: false
+
+terraform-plan:
+  stage: plan
+  script:
+    - terraform plan --out $TF_PLAN_FILE       
+  artifacts:
+    paths:
+      - $TF_PLAN_FILE
+
+terraform-apply:
+  stage: apply
+  script:
+  - terraform apply --auto-approve $TF_PLAN_FILE
+  when:
+    manual
